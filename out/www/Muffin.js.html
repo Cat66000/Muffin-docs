@@ -1,0 +1,302 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>JSDoc: Muffin.js</title>
+
+    <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="./build/entry.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link href="https://fonts.googleapis.com/css?family=Muli:100,400,700|Oswald:300|Inconsolata,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+    <link type="text/css" rel="stylesheet" href="https://jmblog.github.io/color-themes-for-google-code-prettify/themes/tomorrow-night.min.css">
+    <link type="text/css" rel="stylesheet" href="styles/app.min.css">
+    <link type="text/css" rel="stylesheet" href="styles/iframe.css">
+</head>
+
+<body>
+    <div id="stickyNavbarOverlay"></div>
+    <div class="top-navbar">
+        <div class="container">
+            <nav class="navbar" role="navigation" aria-label="main navigation">
+                <div class="navbar-brand">
+                    
+                     
+                        <h1 class="navbar-item">Muffin Doc</h1>
+                    
+                    <a id="hamburger" role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+                        <span aria-hidden="true"></span>
+                        <span aria-hidden="true"></span>
+                        <span aria-hidden="true"></span>
+                    </a>
+                </div>
+                 
+                <div class="navbar-menu">
+                    <div class="navbar-end">
+                    
+                        <div class="navbar-item">
+                            <a href="https://github.com/Cat66000/Muffin" target="_blank">Github</a>
+                        </div>
+                    
+                    </div>
+                </div>
+                
+            </nav>
+        </div>
+    </div>
+    <div class="container">
+        <div class="columns">
+            <div class="column is-3" id="sidebarNav">
+                <div class="sidebar">
+                    <nav>
+                        <h2><a href="index.html">Home</a></h2><div class="category"><h3>Classes</h3><ul><li><a href="Muffin.html">Muffin</a></li><li><a href="MuffinClient.html">MuffinClient</a></li></ul><h3><a href="global.html">Global</a></h3></div>
+                    </nav>
+                </div>
+            </div>
+            <div class="column is-9-desktop">
+                <div class="content" id="main-content-wrapper">
+                    <header class="page-title">
+                        <p>Source</p>
+                        <h1>Muffin.js</h1>
+                    </header>
+                    
+                    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/* eslint-disable max-len */
+const _ = require("lodash");
+const Err = require("./MuffinError");
+
+const _readyCheck = Symbol("readyCheck");
+const _typeCheck = Symbol("typeCheck");
+
+class Muffin {
+
+    /**
+     * @class
+     * @protected
+     * @classdesc Use MongoDB collections to provide methods similar to Map but to interact with MongoDB
+     * @description Initialize a new Muffin.
+     * @param {Collection} base - The Collection from MongoDB
+     * @param {MuffinClient} client - The client that instantiated the Muffin
+     */
+    constructor(base, client) {
+        this._base = base;
+        this.client = client;
+    }
+
+    [_readyCheck]() {
+        if (this.client.closed === true) throw new Err("the database has been closed", "MuffinClosedError");
+    }
+
+    [_typeCheck](key) {
+        return ["Number", "String", "Object"].includes(key.constructor.name);
+    }
+
+    /**
+     * @async
+     * @description Set a document into the database
+     * @param {*} key - The key of the document to set
+     * @param {*} val - The value of the document to set into the database
+     * @param {string} [path=null] - (optional) The path to the property to modify inside the value. Can be a path with dot notation, such as "prop1.subprop2.subprop3"
+     * @returns {Promise&lt;void>} A promise
+     */
+    async set(key, val, path) {
+        this[_readyCheck]();
+
+        if (_.isNil(key)) throw new Err("key is null or undefined");
+
+        if (!this[_typeCheck](key)) key = key.toString();
+
+        if (path) {
+            val = _.set((await this._base.findOne({ _id: key })).value || {}, path, val);
+        }
+
+        await this._base.updateOne({ _id: key }, { $set: { _id: key, value: val } }, { upsert: true });
+    }
+
+    /**
+     * @async
+     * @description Find a document in the database
+     * @param {*} key - The key of the document to get
+     * @param {string} [path=null] - (optional) The path to the property to modify inside the value. Can be a path with dot notation, such as "prop1.subprop2.subprop3"
+     * @param {boolean} [raw=false] - (optional) If set to true, affects the return value
+     * @returns {Promise&lt;*|Object&lt;*>>} A promise containing the value found in the database for this key. If raw is true, it returns a promise containing the full object instead, i.e. : { _id: "foo", value: "bar" }
+     */
+    async get(key, path, raw = false) {
+        this[_readyCheck]();
+
+        if (_.isNil(key)) return null;
+
+        if (!this[_typeCheck](key)) key = key.toString();
+
+        const find = await this._base.findOne({ _id: key });
+        const data = find.value;
+        if (_.isNil(find) || _.isNil(data)) return null;
+
+        if (raw) {
+            return find;
+        }
+
+        if (path) {
+            return _.get(data, path);
+        } else {
+            return data;
+        }
+    }
+
+    /**
+     * @async
+     * @description Check if a document exists
+     * @param {*} key - The key of the document to check
+     * @param {string} [path=null] - (optional) The path to the property to check. Can be a path with dot notation, such as "prop1.subprop2.subprop3"
+     * @returns {Promise&lt;boolean>} A promise
+     */
+    async has(key, path) {
+        this[_readyCheck]();
+
+        if (!this[_typeCheck](key)) key = key.toString();
+
+        const find = await this._base.findOne({ _id: key });
+        const data = find.value;
+        if (_.isNil(find) || _.isNil(data)) return false;
+
+        if (path) {
+            return _.has(data, path);
+        }
+
+        return true;
+    }
+
+    /**
+     * @async
+     * @description Check if a document exists, otherwise, set a document
+     * @param {*} key - The key to check if it exists or to set a document or a property inside the value
+     * @param {*} val - The value to set if the key doesn't exist
+     * @param {string} [path=null] - (optional) The path to the property to check. Can be a path with dot notation, such as "prop1.subprop2.subprop3"
+     * @param {boolean} [raw=false] - (optional) If set to true, affects the return value
+     * @returns {Promise&lt;*|Object&lt;*>>} A promise containing the value found in the database for this key. If raw is true, it returns a promise containing the full object instead, i.e. : { _id: "foo", value: "bar" }
+     */
+    async ensure(key, val, path, raw = false) {
+        this[_readyCheck]();
+
+        if (await this.has(key, path) === false) {
+            await this.set(key, val, path);
+        }
+
+        return await this.get(key, path, raw);
+    }
+
+    // This method was mostly taken from Enmap... Licence : https://github.com/eslachance/enmap/blob/master/LICENSE
+    /**
+     * @async
+     * @description Delete a document in the database
+     * @param {*} key - The key
+     * @param {string} [path=null] - (optional) The path to the property to delete. Can be a path with dot notation, such as "prop1.subprop2.subprop3"
+     * @returns {Promise&lt;void>} A promise
+     */
+    async delete(key, path) {
+        this[_readyCheck]();
+
+        if (_.isNil(key)) throw new Err("key is null or undefined");
+
+        if (!this[_typeCheck](key)) key = key.toString();
+
+        if (path) {
+            const find = await this._base.findOne({ _id: key });
+            let data = find.value;
+            if (_.isNil(find) || _.isNil(data)) return;
+
+            path = _.toPath(path);
+            const last = path.pop();
+            const propValue = path.length ? _.get(data, path) : data;
+
+            if (_.isArray(propValue)) {
+                propValue.splice(last, 1);
+            } else {
+                delete propValue[last];
+            }
+
+            if (path.length) {
+                _.set(data, path, propValue);
+            } else {
+                data = propValue;
+            }
+
+            await this._base.updateOne({ _id: key }, { $set: { _id: key, value: data } }, { upsert: true });
+        } else {
+            await this._base.deleteOne({ _id: key }, { single: true });
+        }
+    }
+
+    /**
+     * @async
+     * @description Delete all the documents
+     * @returns {Promise&lt;void>} A promise
+     */
+    async clear() {
+        this[_readyCheck]();
+
+        await this._base.deleteMany({});
+    }
+
+    /**
+     * @returns {Array&lt;*>} An array with the values of all the documents
+     */
+    valueArray() { return this._base.find({}).map(d => d.value).toArray(); }
+
+    /**
+     * @returns {Array&lt;*>} An array with the keys of all the documents
+     */
+    keyArray() { return this._base.find({}).map(d => d._id).toArray(); }
+
+    /**
+     * @returns {Array&lt;Object&lt;*>>} An array with all the documents of the database
+     */
+    rawArray() { return this._base.find({}).toArray(); }
+
+    /**
+     * @description The size of the database
+     */
+    get size() { return this._base.countDocuments(); }
+
+}
+
+module.exports = Muffin;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+<footer class="footer">
+    <div class="content has-text-centered">
+        <p>Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Sun Oct 13 2019 17:03:18 GMT+0200 (Paris, Madrid (heure d’été))</p>
+        <p class="sidebar-created-by">
+            <a href="https://github.com/SoftwareBrothers/better-docs" target="_blank">BetterDocs theme</a> provided with <i class="fas fa-heart"></i> by 
+            <a href="http://softwarebrothers.co" target="_blank">SoftwareBrothers - JavaScript Development Agency</a>
+        </p>
+    </div>
+</footer>
+
+<script src="scripts/app.min.js"></script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
