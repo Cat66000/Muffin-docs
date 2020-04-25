@@ -1,70 +1,33 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    
     <meta charset="utf-8">
-    <title>JSDoc: Piece.js</title>
+    <title>JSDoc: Source: Piece.js</title>
 
-    <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="./build/entry.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
     <!--[if lt IE 9]>
       <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
-    <link href="https://fonts.googleapis.com/css?family=Muli:100,400,700|Oswald:300|Inconsolata,700" rel="stylesheet">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
-    <link type="text/css" rel="stylesheet" href="https://jmblog.github.io/color-themes-for-google-code-prettify/themes/tomorrow-night.min.css">
-    <link type="text/css" rel="stylesheet" href="styles/app.min.css">
-    <link type="text/css" rel="stylesheet" href="styles/iframe.css">
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
 </head>
 
 <body>
-    <div id="stickyNavbarOverlay"></div>
-    <div class="top-navbar">
-        <div class="container">
-            <nav class="navbar" role="navigation" aria-label="main navigation">
-                <div class="navbar-brand">
-                    
-                     
-                        <h1 class="navbar-item">MuffinDB Documentation</h1>
-                    
-                    <a id="hamburger" role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
-                        <span aria-hidden="true"></span>
-                        <span aria-hidden="true"></span>
-                        <span aria-hidden="true"></span>
-                    </a>
-                </div>
-                
-            </nav>
-        </div>
-    </div>
-    <div class="container">
-        <div class="columns">
-            <div class="column is-3" id="sidebarNav">
-                <div class="sidebar">
-                    <nav>
-                        <h2><a href="index.html">Home</a></h2><div class="category"><h3>Classes</h3><ul><li><a href="MuffinClient.html">MuffinClient</a></li><li><a href="Piece.html">Piece</a></li></ul><h3>Events</h3><ul><li><a href="MuffinClient.html#event:change">change</a></li><li><a href="MuffinClient.html#event:close">close</a></li><li><a href="MuffinClient.html#event:reconnect">reconnect</a></li><li><a href="MuffinClient.html#event:timeout">timeout</a></li></ul><h3><a href="global.html">Global</a></h3></div>
-                    </nav>
-                </div>
-            </div>
-            <div class="column is-9-desktop">
-                <div class="content" id="main-content-wrapper">
-                    <header class="page-title">
-                        <p>Source</p>
-                        <h1>Piece.js</h1>
-                    </header>
-                    
-                    
+
+<div id="main">
+
+    <h1 class="page-title">Source: Piece.js</h1>
+
+    
 
 
 
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const _ = require("lodash"),
+            <pre class="prettyprint source linenums"><code>/* eslint-disable max-len */
+const _ = require("lodash"),
     EventEmitter = require("events"),
     Err = require("./MuffinError");
 
@@ -80,13 +43,13 @@ class Piece extends EventEmitter {
      * @classdesc An object similar to Map that has an optional cache, used to interact with the database.
      * @description Initialize a new Piece.
      * @since 1.0
+     * @example
+     * const piece = new muffinClient.piece("example", { fetchAll: true, cacheSyncAuto: true })
      * @param {Collection} base - The [Collection]{@link https://mongodb.github.io/node-mongodb-native/3.3/api/Collection.html} from MongoDB.
      * @param {MuffinClient} client - The client that instantiated the Piece.
      * @param {PieceOptions} options - Options like cache or fetchAll.
-     * @example
-     * const piece = new muffinClient.piece("example", { fetchAll: true, cacheSyncAuto: true })
      */
-    constructor(base, client, { fetchAll, cacheSyncAuto }) {
+    constructor(base, client, options) {
         super();
         /**
          * @since 1.0
@@ -100,7 +63,7 @@ class Piece extends EventEmitter {
          */
         this.client = client;
 
-        if (fetchAll || cacheSyncAuto) {
+        if (options) {
             /**
              * @since 1.2
              * @member {boolean} - If set to true, the cache is available.
@@ -113,27 +76,38 @@ class Piece extends EventEmitter {
              */
             this.cache = new Map();
 
-            if (fetchAll) {
+            if (options.fetchAll) {
                 this.base.find({}).map(d => { this.cache.set(d._id, d.value); });
             }
         } else {
             this.hasCache = false;
         }
 
+        /**
+         * @event Piece#change
+         * @since 1.2
+         * @description Emit when a change occurs on the database.
+         * @type {Object}
+         */
+
         this.base.watch(null, { fullDocument: "updateLookup" }).on("change", obj => {
-            switch (obj.operationType) {
-                case "update":
-                case "insert":
-                case "replace":
-                    this.cache.set(obj.fullDocument._id, obj.fullDocument.value);
-                    break;
-                case "delete":
-                    this.cache.delete(obj.documentKey._id);
-                    break;
-                case "drop":
-                case "dropDatabase":
-                    this.cache.clear();
-                    break;
+            this.emit("change", obj);
+
+            if (this.hasCache) {
+                switch (obj.operationType) {
+                    case "update":
+                    case "insert":
+                    case "replace":
+                        this.cache.set(obj.fullDocument._id, obj.fullDocument.value);
+                        break;
+                    case "delete":
+                        this.cache.delete(obj.documentKey._id);
+                        break;
+                    case "drop":
+                    case "dropDatabase":
+                        this.cache.clear();
+                        break;
+                }
             }
         });
     }
@@ -153,6 +127,12 @@ class Piece extends EventEmitter {
      * @param {*} key - The key of the document to set.
      * @param {*} val - The value of the document to set into the database.
      * @param {string} [path=null] - The path to the property to modify inside the value. Can be a dot-separated path, such as "prop1.subprop2.subprop3".
+     * @example
+     * // Sets the value "bar" to the key "foo"
+     * await piece.set("foo", "bar");
+     *
+     * // Sets the value "oof" to the property bar
+     * await piece.set("foo", "oof", "bar");
      * @returns {Promise&lt;void>} A promise
      */
     async set(key, val, path) {
@@ -180,7 +160,6 @@ class Piece extends EventEmitter {
             val = _.set(rawData.value || {}, path, val);
         }
 
-        if (this.hasCache) this.cache.set(key, val);
         await this.base.updateOne({ _id: key }, { $set: { _id: key, value: val } }, { upsert: true });
     }
 
@@ -192,6 +171,12 @@ class Piece extends EventEmitter {
      * @param {*} val - The value to push.
      * @param {string} [path=null] - Optional. The path to the property to modify inside the element. Can be a dot-separated path, such as "prop1.subprop2.subprop3".
      * @param {boolean} [allowDupes=false] - Optional. Allow duplicate values in the array.
+     * @example
+     * // Adds the value "bar" to the array that is the value of the key "foo"
+     * await piece.push("foo", "bar");
+     *
+     * // We can also do that for properties that are arrays
+     * await piece.push("foo", "oof", "bar");
      * @returns {Promise&lt;void>} A promise
      */
     async push(key, val, path, allowDupes = false) {
@@ -224,11 +209,7 @@ class Piece extends EventEmitter {
             if (!_.isArray(_.get(rawData.value, path))) throw new Err("The element you tried to modify is not an array");
             data = _.isArray(_.get(rawData.value, path)) ? rawData.value : [];
 
-            if (data.indexOf(val) > -1 &amp;&amp; !allowDupes) {
-                if (!this.cache.has(key)) this.cache.set(key, finalData);
-
-                return;
-            }
+            if (data.indexOf(val) > -1 &amp;&amp; !allowDupes) return;
 
             data.push(val);
 
@@ -237,18 +218,12 @@ class Piece extends EventEmitter {
             if (!_.isArray(rawData.value)) throw new Err("The element you tried to modify is not an array");
             data = _.isArray(rawData.value) ? rawData.value : [];
 
-            if (data.indexOf(val) > -1 &amp;&amp; !allowDupes) {
-                if (!this.cache.has(key)) this.cache.set(key, finalData);
-
-                return;
-            }
+            if (data.indexOf(val) > -1 &amp;&amp; !allowDupes) return;
 
             data.push(val);
 
             finalData = data;
         }
-
-        if (this.hasCache) this.cache.set(key, finalData);
 
         await this.base.updateOne({ _id: key }, { $set: { _id: key, value: finalData } }, { upsert: true });
     }
@@ -259,7 +234,13 @@ class Piece extends EventEmitter {
      * @since 1.0
      * @param {*} key - The key of the document to get.
      * @param {string} [path=null] - Optional. The path to the property to take inside the value. Can be a dot-separated path, such as "prop1.subprop2.subprop3".
-     * @param {boolean} [raw=false] - Optional. Returns the full object, i.e. : { _id: "foo", value: "bar" }.
+     * @param {boolean} [raw=false] - Optional. Returns the full object, i.e. : { _id: "foo", value: "bar" }. Not used if you don't use the cache.
+     * @example
+     * // Returns the value for the key foo
+     * const data = await piece.get("foo");
+     *
+     * // Returns the value of the property bar
+     * const data = await piece.get("foo", "bar")
      * @returns {Promise&lt;*>} If raw is set to false, returns the value found in the database for this key.
      */
     async get(key, path, raw = false) {
@@ -308,7 +289,13 @@ class Piece extends EventEmitter {
      * @since 1.2
      * @param {*} key - The key of the document to get
      * @param {string} [path=null] - Optional. The path to the property to take inside the value. Can be a dot-separated path, such as "prop1.subprop2.subprop3".
-     * @param {boolean} [raw=false] - Optional. Returns the full object, i.e. : { _id: "foo", value: "bar" }.
+     * @param {boolean} [raw=false] - Optional. Returns the full object, i.e. : { _id: "foo", value: "bar" }. Not used if you don't use the cache.
+     * @example
+     * // Returns the value for the key foo and update the cache
+     * const data = await piece.fetch("foo");
+     *
+     * // Returns the value of the property bar and update the cache
+     * const data = await piece.fetch("foo", "bar")
      * @returns {Promise&lt;*>} If raw is set to false, returns the value found in the database for this key.
      */
     async fetch(key, path, raw = false) {
@@ -368,6 +355,12 @@ class Piece extends EventEmitter {
      * @since 1.0
      * @param {*} key - The key of the document to check.
      * @param {string} [path=null] - Optional. The path to the property to check. Can be a dot-separated path, such as "prop1.subprop2.subprop3".
+     * @example
+     * // If the key "foo" doesn't exists, it returns
+     * if (!await piece.has("foo")) return;
+     *
+     * // If the property "bar" of the value of "foo" dosn't exists, it returns
+     * if (!await piece.has("foo", "bar")) return;
      * @returns {Promise&lt;boolean>} A promise
      */
     async has(key, path) {
@@ -391,23 +384,26 @@ class Piece extends EventEmitter {
         const data = rawData.value;
         if (_.isNil(data)) return false;
 
-        if (this.hasCache) this.cache.set(key, data);
+        if (this.hasCache) if (!this.cache.has(key)) this.cache.set(key, data);
 
         if (path) {
             return _.has(data, path);
+        } else {
+            return true;
         }
-
-        return true;
     }
 
     /**
      * @async
-     * @description If the document doesn't exist : creates it and returns it, if it does exist : returns it.
+     * @description If the document doesn't exists : creates it and returns it, if it does exists : returns it.
      * @since 1.0
      * @param {*} key - The key to check if it exists or to set a document or a property inside the value.
      * @param {*} val - The value to set if the key doesn't exist.
      * @param {string} [path=null] - Optional. The path to the property to ensure. Can be a dot-separated path, such as "prop1.subprop2.subprop3".
-     * @param {boolean} [raw=false] - Optional. Returns the full object, i.e. : { _id: "foo", value: "bar" }.
+     * @param {boolean} [raw=false] - Optional. Returns the full object, i.e. : { _id: "foo", value: "bar" }. Not used if you don't use the cache.
+     * @example
+     * // If foo exists it returns its value, if it doesn't it set its value to "bar" and returns it
+     * const data = piece.ensure("foo", "bar");
      * @returns {Promise&lt;*>} If raw is set to false, returns the value found in the database for this key.
      */
     async ensure(key, val, path, raw = false) {
@@ -471,10 +467,8 @@ class Piece extends EventEmitter {
                 data = propValue;
             }
 
-            if (this.hasCache) this.cache.set(key, data);
             await this.base.updateOne({ _id: key }, { $set: { _id: key, value: data } }, { upsert: true });
         } else {
-            if (this.hasCache) this.cache.delete(key);
             await this.base.deleteOne({ _id: key }, { single: true });
         }
     }
@@ -500,8 +494,6 @@ class Piece extends EventEmitter {
      * @returns {void} - Nothing
      */
     evict(key, path) {
-        this[_readyCheck]();
-
         if (!this.hasCache) throw new Err("The cache is not activated, you can't use this method");
         if (_.isNil(key)) throw new Err("key is null or undefined");
 
@@ -554,10 +546,10 @@ class Piece extends EventEmitter {
     /**
      * @since 1.0
      * @async
-     * @param {boolean} [cache=false] - Optional. If there is a [cache]{@link Piece~cache}, it takes the data from it.
+     * @param {boolean} [cache=true] - Optional. If there is a [cache]{@link Piece~cache}, per defaut it is set to true and it will takes cached data. If you set it to false, it will takes the data from the Mongo server.
      * @returns {Array&lt;*>} A promise. When resolved, returns an array with the values of all the documents
      */
-    async valueArray(cache = false) {
+    async valueArray(cache = true) {
         this[_readyCheck]();
 
         if (this.hasCache &amp;&amp; cache) {
@@ -568,6 +560,8 @@ class Piece extends EventEmitter {
             }
             return values;
         } else {
+            this[_readyCheck]();
+
             return this.base.find({}).map(d => d.value).toArray();
         }
     }
@@ -575,12 +569,10 @@ class Piece extends EventEmitter {
     /**
      * @since 1.0
      * @async
-     * @param {boolean} [cache=false] - Optional. If there is a [cache]{@link Piece~cache}, it takes the data from it.
+     * @param {boolean} [cache=true] - Optional. If there is a [cache]{@link Piece~cache}, per defaut it is set to true and it will takes cached data. If you set it to false, it will takes the data from the Mongo server.
      * @returns {Promise&lt;Array&lt;*>>} A promise. When resolved, returns an array with the keys of all the documents
      */
-    async keyArray(cache = false) {
-        this[_readyCheck]();
-
+    async keyArray(cache = true) {
         if (this.hasCache &amp;&amp; cache) {
             const keys = [];
 
@@ -589,6 +581,8 @@ class Piece extends EventEmitter {
             }
             return keys;
         } else {
+            this[_readyCheck]();
+
             return this.base.find({}).map(d => d._id).toArray();
         }
     }
@@ -630,24 +624,19 @@ module.exports = Piece;
 
 
 
-                </div>
-            </div>
-        </div>
-    </div>
+</div>
 
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="MuffinClient.html">MuffinClient</a></li><li><a href="Piece.html">Piece</a></li></ul><h3>Events</h3><ul><li><a href="MuffinClient.html#event:change">change</a></li><li><a href="MuffinClient.html#event:close">close</a></li><li><a href="MuffinClient.html#event:reconnect">reconnect</a></li><li><a href="MuffinClient.html#event:timeout">timeout</a></li><li><a href="Piece.html#event:change">change</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
 
-<footer class="footer">
-    <div class="content has-text-centered">
-        <p>Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.3</a> on Fri Apr 24 2020 21:27:52 GMT+0200 (GMT+02:00)</p>
-        <p class="sidebar-created-by">
-            <a href="https://github.com/SoftwareBrothers/better-docs" target="_blank">BetterDocs theme</a> provided with <i class="fas fa-heart"></i> by 
-            <a href="http://softwarebrothers.co" target="_blank">SoftwareBrothers - JavaScript Development Agency</a>
-        </p>
-    </div>
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Sat Apr 25 2020 02:59:42 GMT+0200 (GMT+02:00)
 </footer>
 
-
-<script src="scripts/app.min.js"></script>
+<script> prettyPrint(); </script>
 <script src="scripts/linenumber.js"> </script>
 </body>
 </html>
