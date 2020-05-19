@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: MuffinClient.js</title>
+    <title>JSDoc: Source: Client.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: MuffinClient.js</h1>
+    <h1 class="page-title">Source: Client.js</h1>
 
     
 
@@ -26,7 +26,9 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* eslint-disable max-len */
+            <pre class="prettyprint source linenums"><code>// eslint-disable-next-line spaced-comment
+
+/* eslint-disable max-len */
 
 /**
  * @typedef {Object} ClientOptions
@@ -49,20 +51,20 @@
  * @typedef {Object} MongoError {@link https://mongodb.github.io/node-mongodb-native/3.3/api/MongoError.html}
  */
 
-const { MongoClient } = require("mongodb"),
-	EventEmitter = require("events");
+const { MongoClient } = require('mongodb'),
+	EventEmitter = require('events');
 
-const Piece = require("./Piece"),
-	Err = require("./MuffinError");
+const Piece = require('./Piece'),
+	Err = require('./MuffinError');
 
-const _url = Symbol("url"),
-	_client = Symbol("client"),
-	_db = Symbol("db"),
-	_readyCheck = Symbol("readyCheck"),
-	_ready = Symbol("ready"),
-	_readyFailed = Symbol("readyFailed"),
-	_deprecatedChangeEvent = require("util").deprecate((client, obj) => {
-		client.emit("change", obj);
+const _url = Symbol('url'),
+	_client = Symbol('client'),
+	_db = Symbol('db'),
+	_readyCheck = Symbol('readyCheck'),
+	_ready = Symbol('ready'),
+	_readyFailed = Symbol('readyFailed'),
+	_deprecatedChangeEvent = require('util').deprecate((client, obj) => {
+		client.emit('change', obj);
 	}, "MuffinDB : Please consider using Piece's change event instead of Client's change event.");
 
 class Client extends EventEmitter {
@@ -98,10 +100,10 @@ class Client extends EventEmitter {
 		 * @since 1.0
 		 * @member {string} - Name of the database, Muffin by default.
 		 */
-		this.dbName = options.dbName || "muffin";
+		this.dbName = options.dbName || 'muffin';
 		this[_url] =
 			options.url ||
-			`mongodb://${options.username}:${options.password}@${options.host || "localhost"}:${
+			`mongodb://${options.username}:${options.password}@${options.host || 'localhost'}:${
 				options.port || 27017
 			}/${this.dbName}`;
 
@@ -133,8 +135,8 @@ class Client extends EventEmitter {
 				 * @since 1.0
 				 * @description Emitted after a socket closed against a single server or mongos proxy.
 				 */
-				this[_db].on("close", () => {
-					this.emit("close");
+				this[_db].on('close', () => {
+					this.emit('close');
 				});
 
 				/**
@@ -142,8 +144,8 @@ class Client extends EventEmitter {
 				 * @since 1.0
 				 * @type {Object}
 				 */
-				this[_db].on("reconnect", (object) => {
-					this.emit("reconnect", object);
+				this[_db].on('reconnect', (object) => {
+					this.emit('reconnect', object);
 				});
 
 				/**
@@ -152,8 +154,8 @@ class Client extends EventEmitter {
 				 * @description Emitted after a socket timeout occurred against a single server or mongos proxy.
 				 * @type {MongoError}
 				 */
-				this[_db].on("timeout", (err) => {
-					this.emit("timeout", err);
+				this[_db].on('timeout', (err) => {
+					this.emit('timeout', err);
 				});
 
 				/**
@@ -163,8 +165,8 @@ class Client extends EventEmitter {
 				 * @description Emit when a change occurs on the database.
 				 * @type {Object}
 				 */
-				this[_db].watch(null, { fullDocument: "updateLookup" }).on("change", (obj) => {
-					if (this.listenerCount("change") !== 0) {
+				this[_db].watch(null, { fullDocument: 'updateLookup' }).on('change', (obj) => {
+					if (this.listenerCount('change') !== 0) {
 						_deprecatedChangeEvent(this, obj);
 					}
 				});
@@ -176,15 +178,16 @@ class Client extends EventEmitter {
 
 	[_readyCheck]() {
 		if (!this.isReady) {
-			throw new Err("the database is not ready", "MuffinReadyError");
+			throw new Err('the database is not ready', 'MuffinReadyError');
 		}
 		if (this.closed) {
-			throw new Err("the database has been closed", "MuffinClosedError");
+			throw new Err('the database has been closed', 'MuffinClosedError');
 		}
 	}
 
 	/**
 	 * @description Creates multiple pieces.
+	 * @deprecated
 	 * @since 1.0
 	 * @param {Array&lt;string>} names - Names of the pieces.
 	 * @param {PieceOptions} options - Options like cache or fetchAll.
@@ -204,6 +207,37 @@ class Client extends EventEmitter {
 		this[_readyCheck]();
 
 		const pieces = {};
+
+		// eslint-disable-next-line array-callback-return
+		names.map((val) => {
+			pieces[val] = this.piece(val, options);
+		});
+
+		return pieces;
+	}
+
+	/**
+	 * @description Creates multiple pieces.
+	 * @deprecated
+	 * @since 1.0
+	 * @param {Array&lt;string>} names - Names of the pieces.
+	 * @param {PieceOptions} options - Options like cache or fetchAll.
+	 * @returns {Object&lt;Piece>} An object with the pieces. [Destructuring]{@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment} can be useful !
+	 * @example
+	 * const Muffin = require("muffindb");
+	 * // MuffinOptions is a placeholder for... muffin options
+	 * const client = new Muffin.Client(MuffinOptions);
+	 *
+	 * // This will returns an object with pieces inside
+	 * // Theses pieces will have a cache because of fetchAll
+	 * // fetchAll will make the pieces fetch all the data and caches them
+	 * // Their cache will be synchronized with the database
+	 * const pieces = client.multi(["a piece", "another piece", "third piece"], { fetchAll: true })
+	 */
+	multiPieces(names = [], options) {
+		this[_readyCheck]();
+
+		const pieces = [];
 
 		// eslint-disable-next-line array-callback-return
 		names.map((val) => {
@@ -266,7 +300,7 @@ module.exports = Client;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue May 19 2020 10:58:30 GMT+0200 (GMT+02:00)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue May 19 2020 09:35:24 GMT+0200 (GMT+02:00)
 </footer>
 
 <script> prettyPrint(); </script>

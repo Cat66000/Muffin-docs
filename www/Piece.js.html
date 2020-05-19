@@ -27,29 +27,29 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/* eslint-disable max-len */
-const _ = require('lodash'),
-	EventEmitter = require('events'),
-	Err = require('./MuffinError');
+const _ = require("lodash"),
+	EventEmitter = require("events"),
+	Err = require("./MuffinError");
 
-const _closeCheck = Symbol('closeCheck'),
-	_cacheDefer = Symbol('cacheDefer'),
-	_cacheReady = Symbol('cacheReady'),
-	_cacheFailed = Symbol('cacheFailed'),
-	_typeCheck = Symbol('typeCheck');
+const _closeCheck = Symbol("closeCheck"),
+	_cacheDefer = Symbol("cacheDefer"),
+	_cacheReady = Symbol("cacheReady"),
+	_cacheFailed = Symbol("cacheFailed"),
+	_typeCheck = Symbol("typeCheck");
 
 class Piece extends EventEmitter {
 	/**
+	 * An object similar to Map that has an optional cache, used to interact with the database.
 	 * @namespace
 	 * @class
 	 * @protected
-	 * @classdesc An object similar to Map that has an optional cache, used to interact with the database.
 	 * @description Initialize a new Piece. You need to use MuffinClient#piece or MuffinClient#multi to do that.
 	 * @since 1.0
 	 * @example
 	 * const piece = new muffinClient.piece("example", { fetchAll: true, cacheSyncAuto: true })
 	 * @param {Collection} base - The [Collection]{@link https://mongodb.github.io/node-mongodb-native/3.3/api/Collection.html} from MongoDB.
 	 * @param {MuffinClient} client - The client that instantiated the Piece.
-	 * @param {PieceOptions} options - Options like cache or fetchAll.
+	 * @param {PieceOptions} options - Actually there is only the fetchAll option.
 	 */
 	constructor(base, client, options) {
 		super();
@@ -121,23 +121,23 @@ class Piece extends EventEmitter {
 		 * @type {Object}
 		 */
 
-		this.base.watch(null, { fullDocument: 'updateLookup' }).on('change', async (obj) => {
-			this.emit('change', obj);
+		this.base.watch(null, { fullDocument: "updateLookup" }).on("change", async (obj) => {
+			this.emit("change", obj);
 
 			await this[_cacheDefer];
 
 			if (this.hasCache) {
 				switch (obj.operationType) {
-					case 'update':
-					case 'insert':
-					case 'replace':
+					case "update":
+					case "insert":
+					case "replace":
 						this.cache.set(obj.fullDocument._id, obj.fullDocument.value);
 						break;
-					case 'delete':
+					case "delete":
 						this.cache.delete(obj.documentKey._id);
 						break;
-					case 'drop':
-					case 'dropDatabase':
+					case "drop":
+					case "dropDatabase":
 						this.cache.clear();
 						break;
 				}
@@ -147,12 +147,12 @@ class Piece extends EventEmitter {
 
 	[_closeCheck]() {
 		if (this.client.closed) {
-			throw new Err('the database has been closed', 'MuffinClosedError');
+			throw new Err("the database has been closed", "MuffinClosedError");
 		}
 	}
 
 	[_typeCheck](key) {
-		return ['Number', 'String', 'Object'].includes(key.constructor.name);
+		return ["Number", "String", "Object"].includes(key.constructor.name);
 	}
 
 	/**
@@ -166,23 +166,22 @@ class Piece extends EventEmitter {
 	 * // Sets the value "bar" to the key "foo"
 	 * await piece.set("foo", "bar");
 	 *
-	 * // Sets the value "oof" to the property bar
-	 * await piece.set("foo", "oof", "bar");
+	 * // Sets the value "baz" to the property bar
+	 * await piece.set("foo", "baz", "bar");
 	 * @returns {Promise&lt;void>} A promise
 	 */
 	async set(key, val, path) {
 		this[_closeCheck]();
 
 		if (_.isNil(key)) {
-			throw new Err('key is null or undefined');
+			throw new Err("key is null or undefined");
+		}
+		if (_.isNil(val)) {
+			throw new Err("val is null or undefined");
 		}
 
 		if (!this[_typeCheck](key)) {
 			key = key.toString();
-		}
-
-		if (_.isNil(val)) {
-			throw new Err('val is null or undefined');
 		}
 
 		if (path) {
@@ -219,26 +218,23 @@ class Piece extends EventEmitter {
 	 * await piece.push("foo", "bar");
 	 *
 	 * // We can also do that for properties that are arrays
-	 * await piece.push("foo", "oof", "bar");
+	 * await piece.push("foo", "baz", "bar");
 	 * @returns {Promise&lt;void>} A promise
 	 */
 	async push(key, val, path, allowDupes = false) {
 		this[_closeCheck]();
 
 		if (_.isNil(key)) {
-			throw new Err('key is null or undefined');
+			throw new Err("key is null or undefined");
 		}
-
+		if (_.isNil(val)) {
+			throw new Err("val is null or undefined");
+		}
 		if (!this[_typeCheck](key)) {
 			key = key.toString();
 		}
 
-		if (_.isNil(val)) {
-			throw new Err('val is null or undefined');
-		}
-
 		let rawData;
-
 		if (this.hasCache) {
 			await this[_cacheDefer];
 
@@ -257,10 +253,9 @@ class Piece extends EventEmitter {
 
 		let data;
 		let finalData;
-
 		if (path) {
 			if (!_.isArray(_.get(rawData.value, path))) {
-				throw new Err('The element you tried to modify is not an array');
+				throw new Err("The element you tried to modify is not an array");
 			}
 			data = _.isArray(_.get(rawData.value, path)) ? rawData.value : [];
 
@@ -273,7 +268,7 @@ class Piece extends EventEmitter {
 			finalData = _.set(rawData.value, path, data);
 		} else {
 			if (!_.isArray(rawData.value)) {
-				throw new Err('The element you tried to modify is not an array');
+				throw new Err("The element you tried to modify is not an array");
 			}
 			data = _.isArray(rawData.value) ? rawData.value : [];
 
@@ -321,7 +316,6 @@ class Piece extends EventEmitter {
 
 		let rawData;
 		let data;
-
 		try {
 			if (this.hasCache) {
 				await this[_cacheDefer];
@@ -388,7 +382,6 @@ class Piece extends EventEmitter {
 
 		let rawData;
 		let data;
-
 		try {
 			rawData = await this.base.findOne({ _id: key });
 
@@ -418,7 +411,7 @@ class Piece extends EventEmitter {
 	 * @async
 	 * @description Fetch all the database and caches it all. It also updates already cached data.
 	 * @since 1.2
-	 * @returns {void} Nothing
+	 * @returns {Promise&lt;void>} Nothing
 	 */
 	async fetchAll() {
 		this[_closeCheck]();
@@ -454,7 +447,6 @@ class Piece extends EventEmitter {
 		}
 
 		let rawData;
-
 		if (this.hasCache) {
 			await this[_cacheDefer];
 
@@ -505,10 +497,10 @@ class Piece extends EventEmitter {
 		this[_closeCheck]();
 
 		if (_.isNil(key)) {
-			throw new Err('key is null or undefined');
+			throw new Err("key is null or undefined");
 		}
 		if (_.isNil(val)) {
-			throw new Err('val is null or undefined');
+			throw new Err("val is null or undefined");
 		}
 
 		if (!(await this.has(key, path))) {
@@ -530,7 +522,7 @@ class Piece extends EventEmitter {
 		this[_closeCheck]();
 
 		if (_.isNil(key)) {
-			throw new Err('key is null or undefined');
+			throw new Err("key is null or undefined");
 		}
 
 		if (!this[_typeCheck](key)) {
@@ -539,7 +531,6 @@ class Piece extends EventEmitter {
 
 		if (path) {
 			let rawData;
-
 			if (this.hasCache) {
 				await this[_cacheDefer];
 
@@ -607,7 +598,7 @@ class Piece extends EventEmitter {
 			throw new Err("The cache is not activated, you can't use this method");
 		}
 		if (_.isNil(key)) {
-			throw new Err('key is null or undefined');
+			throw new Err("key is null or undefined");
 		}
 
 		this[_cacheDefer].then(() => {
@@ -617,7 +608,6 @@ class Piece extends EventEmitter {
 
 			if (path) {
 				let data;
-
 				if (this.cache.has(key)) {
 					data = this.cache.get(key);
 				} else {
@@ -670,7 +660,7 @@ class Piece extends EventEmitter {
 	 * @since 1.0
 	 * @async
 	 * @param {boolean} [cache=true] - Optional. If there is a [cache]{@link Piece~cache}, per defaut it is set to true and it will takes cached data. If you set it to false, it will takes the data from the Mongo server.
-	 * @returns {Array&lt;*>} A promise. When resolved, returns an array with the values of all the documents
+	 * @returns {Promise&lt;Array&lt;*>>} A promise. When resolved, returns an array with the values of all the documents
 	 */
 	async valueArray(cache = true) {
 		if (this.hasCache &amp;&amp; cache) {
@@ -681,6 +671,7 @@ class Piece extends EventEmitter {
 			for (const value of this.cache.values()) {
 				values.push(value);
 			}
+
 			return values;
 		} else {
 			this[_closeCheck]();
@@ -707,6 +698,7 @@ class Piece extends EventEmitter {
 			for (const key of this.cache.keys()) {
 				keys.push(key);
 			}
+
 			return keys;
 		} else {
 			this[_closeCheck]();
@@ -757,13 +749,13 @@ module.exports = Piece;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="MuffinClient.html">MuffinClient</a></li><li><a href="Piece.html">Piece</a></li></ul><h3>Events</h3><ul><li><a href="MuffinClient.html#event:change">change</a></li><li><a href="MuffinClient.html#event:close">close</a></li><li><a href="MuffinClient.html#event:reconnect">reconnect</a></li><li><a href="MuffinClient.html#event:timeout">timeout</a></li><li><a href="Piece.html#event:change">change</a></li></ul><h3><a href="global.html">Global</a></h3>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Client.html">Client</a></li><li><a href="Piece.html">Piece</a></li></ul><h3>Events</h3><ul><li><a href="MuffinClient.html#event:change">change</a></li><li><a href="MuffinClient.html#event:close">close</a></li><li><a href="MuffinClient.html#event:reconnect">reconnect</a></li><li><a href="MuffinClient.html#event:timeout">timeout</a></li><li><a href="Piece.html#event:change">change</a></li></ul><h3><a href="global.html">Global</a></h3>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Sun May 17 2020 06:53:37 GMT+0200 (GMT+02:00)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue May 19 2020 10:58:30 GMT+0200 (GMT+02:00)
 </footer>
 
 <script> prettyPrint(); </script>
